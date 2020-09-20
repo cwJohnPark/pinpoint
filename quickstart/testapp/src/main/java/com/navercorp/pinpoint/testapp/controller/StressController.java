@@ -2,12 +2,14 @@ package com.navercorp.pinpoint.testapp.controller;
 
 import java.lang.ref.WeakReference;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
+import com.navercorp.pinpoint.testapp.service.DataSourceStressService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -16,6 +18,12 @@ import com.navercorp.pinpoint.testapp.util.Description;
 
 @Controller
 public class StressController {
+
+    private final DataSourceStressService dataSourceStressService;
+
+    public StressController(DataSourceStressService dataSourceStressService) {
+        this.dataSourceStressService = dataSourceStressService;
+    }
 
     @RequestMapping("/consumeCpu")
     @ResponseBody
@@ -108,5 +116,69 @@ public class StressController {
         }
 
         System.gc();
-    }    
+    }
+
+    /**
+     * DATASOURCE CONNECTION USAGE RATE
+     * Triggered when the application's DataSource connection usage(%) exceeds the configured threshold.
+     */
+    @RequestMapping("/consumeDataSourceUsage")
+    @ResponseBody
+    @Description("Call that the application's DataSource connection usage(%) exceeds the configured threshold.")
+    public Map<String, Object> consumeDataSourceUsage() throws InterruptedException, SQLException {
+        boolean executed = dataSourceStressService.occupyDataSource();
+        Map<String, Object> map = new HashMap<String, Object>();
+
+        map.put("message", executed ? "ok" : "failed");
+
+        return map;
+    }
+
+    /**
+     * DEADLOCK OCCURRENCE
+     */
+    @RequestMapping("/occurDeadlock")
+    @ResponseBody
+    @Description("Call that occurs thread deadlocks in application.")
+    public Map<String, Object> occurDeadlock() throws InterruptedException {
+
+        final String resource1 = "resource 1";
+        final String resource2 = "resource 2";
+
+        Thread t1 = new Thread(() -> {
+            synchronized (resource1) {
+                try {
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
+                synchronized (resource2) {
+                    //Thread.sleep(100);
+                }
+            }
+        });
+
+        Thread t2 = new Thread(() -> {
+            synchronized (resource2) {
+                try {
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+                synchronized (resource1) {
+                    // Thread.sleep(100);
+                }
+            }
+        });
+        t1.start();
+        t2.start();
+
+        Thread.sleep(1000);
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("message", "ok");
+
+        return map;
+    }
+
 }
