@@ -612,13 +612,14 @@ alarm 기능을 사용하려면 pinpoint-batch와 pinpoint-web에 설정 또는 
 ## 2.1 pinpoint-batch 설정 및 구현 방법
 
 알람을 전송하는 방법은 총 3가지로서, email, sms와 webhook으로 알람을 전송을 할 수 있다. 
-email로 알람을 설정만 추가하면 기능을 사용할수 있고, sms 전송을 하기 위해서는 직접 전송 로직을 구현해야 한다. webhook 전송은 설정을 추가하면 기능을 사용할 수 있으며, webhook 알람을 받을 receiver 서버가 별도로 필요하다.
+email 전송은 설정만 추가하면 기능을 사용할수 있고, sms 전송을 하기 위해서는 직접 전송 로직을 구현해야 한다. webhook 전송은 설정을 추가하면 기능을 사용할 수 있으며, webhook 알람을 받을 webhook receiver 서비스를 별도로 준비해야한다.
+webhook receiver 서비스는 샘플 프로젝트(링크추가)를 사용하거나 직접 구현해야한다.
 
-### 2.1.1) email/sms/webhook 전송 class 설정 및 구현
+### 2.1.1) email/sms/webhook 전송 설정 및 구현
 
 **A. email 전송**
 
-[applicationContext-batch-sender.xml](https://github.com/pinpoint-apm/pinpoint/blob/master/batch/src/main/resources/applicationContext-batch-sender.xml)파일에 email을 전송하는 class가  기본으로 bean으로 등록 되어있다.
+[applicationContext-batch-sender.xml](https://github.com/pinpoint-apm/pinpoint/blob/master/batch/src/main/resources/applicationContext-batch-sender.xml)파일에 email을 전송하는 class가 bean으로 등록 되어있다.
 
 ```
     <bean id="mailSender" class="com.navercorp.pinpoint.batch.alarm.SpringSmtpMailSender">
@@ -646,7 +647,7 @@ email로 알람을 설정만 추가하면 기능을 사용할수 있고, sms 전
     </bean>
 ```
 
-email 전송 기능을 사용하기 위해서 batch.properties파일에 smtp 서버 정보와 email에 포함될 여러 정보를 설정한다.
+email 전송 기능을 사용하기 위해서 batch.properties파일에 smtp 서버 정보와 email에 포함될 여러 정보를 설정해야한다.
 
 ```
 pinpoint.url= #pinpoint-web 서버의 url 
@@ -675,8 +676,8 @@ public interface MailSender {
 
 **B. sms 전송**
 
-sms를 하려면 com.navercorp.pinpoint.batch.alarm.SmsSender interface를 구현하고 bean으로 등록하면 된다.
-반드시 sms 전송 로직을 구현할 필요는 없고, SmsSender 구현 class가 없는 경우 sms는 전송되지 않는다.
+sms 전송 기능을 사용하려면 com.navercorp.pinpoint.batch.alarm.SmsSender interface를 구현하고 bean으로 등록 해야한다.
+SmsSender 구현 class가 없는 경우 sms는 전송되지 않는다.
 
 ```
 public interface SmsSender {
@@ -686,7 +687,11 @@ public interface SmsSender {
 
 **C. webhook 전송**
 
-webhook 전송 기능은 Pinpoint의 Alarm을 webhook API로 전송 할 수 있는 기능이다. Alarm을 전송받을 Receiver 서버는 직접 구현하고 구동해야 한다. webhook의 payload는 Alarm Checker 타입에 따라 형식이 다르다. Checker 타입에 따른 webhook payload의 스키마와 예제는 [**3.기타** - webhook 페이로드 스키마 명세 및 예시](##3.기타)에 명시되어 있다.
+webhook 전송 기능은 Pinpoint의 Alarm을 webhook API로 전송 할 수 있는 기능이다.
+ 
+Alarm을 전송받을 webhook Receiver 서비스는 직접 구현해야한다. 
+webhook receiver 서버 전송되는 Alarm message(아하 payload)는 Alarm Checker 타입에 따라 스키마가 다르다.
+Checker 타입에 따른 payload 스키마 예제는 [**3.기타** - webhook 페이로드 스키마 명세 및 예시](##3.기타)에서 설명한다.
 
 Pinpoint 2.1.1 이전 버전을 사용하면, mysql의 alarm_rule 테이블에 컬럼을 추가해야한다.
 
@@ -695,8 +700,10 @@ ALTER TABLE `alarm_rule` ADD COLUMN `webhook_send` CHAR(1) DEFAULT NULL;
 ```
 
 스키마가 성공적으로 변경되었다면, alarm 설정 추가시 type 중에서 webhook이라는 새로운 옵션이 추가된다.
+>>>>>>> (minwoo) 스키마가 성공적으로 반영하는것도 필요하고 web에서 특정 설정을 true로 해야하는건 아닌지?
 
-webhook을 전송하는 클래스는 Pinpoint 에서 제공하는 WebhookSenderImpl를 사용하면 되고, [applicationContext-batch-sender.xml](https://github.com/pinpoint-apm/pinpoint/blob/master/batch/src/main/resources/applicationContext-batch-sender.xml)파일에 bean으로 등록 되어있다.
+>>>>>> 이설정은 "## 2.2 pinpoint-web 설정 방법" pinpoint-web에 추가 하는게 좋을것같습니다.
+>webhook을 전송하는 클래스는 Pinpoint 에서 제공하는 WebhookSenderImpl를 사용하면 되고, [applicationContext-batch-sender.xml](https://github.com/pinpoint-apm/pinpoint/blob/master/batch/src/main/resources/applicationContext-batch-sender.xml)파일에 bean으로 등록 되어있다.
 
 ```xml
 <bean id="webHookSender" class="com.navercorp.pinpoint.web.alarm.WebhookSenderImpl">
